@@ -3,7 +3,7 @@
 Mục tiêu: mỗi giai đoạn học **1–2 khái niệm NestJS mới**, làm xong là chạy được và test được bằng REST client.
 Nguyên tắc: không nhảy cóc — feature sau luôn dùng lại thứ feature trước đã dựng.
 
-Trạng thái hiện tại: **đã xong Giai đoạn 0** — ConfigModule + zod validate env, ValidationPipe global, prefix `/api`, cấu trúc thư mục `src/common|config|modules`. Tiếp theo: Giai đoạn 1 (MySQL).
+Trạng thái hiện tại: **đã xong Giai đoạn 0 và 1**. Nền móng config/validation + MySQL 8.4 (Docker, cổng 3307) + TypeORM với migration thật, bảng `users` đã tạo. Tiếp theo: Giai đoạn 2 (signup + hash password).
 
 ---
 
@@ -24,20 +24,25 @@ Trạng thái hiện tại: **đã xong Giai đoạn 0** — ConfigModule + zod 
 
 ---
 
-## Giai đoạn 1 — MySQL + ORM (1 ngày)
+## Giai đoạn 1 — MySQL + ORM ✅ HOÀN THÀNH
 
 **Học:** dynamic module bất đồng bộ (`forRootAsync`), repository pattern, entity, migration.
 
-- [ ] Cài `@nestjs/typeorm typeorm mysql2` + `dotenv` (devDep, cho CLI migration)
-- [ ] MySQL chạy bằng Docker Compose (`docker-compose.yml`, service `mysql:8.4`)
-- [ ] Thêm `DB_*` vào zod schema — `Env` type tự lớn theo
-- [ ] `TypeOrmModule.forRootAsync` + `inject: [ConfigService]` — **không** hardcode credential
-- [ ] `synchronize: false` ngay từ đầu, dùng **migration** thật
-- [ ] `src/database/data-source.ts` cho TypeORM CLI (chạy NGOÀI Nest DI, tái dùng `validateEnv`)
-- [ ] Script `migration:generate` / `migration:run` / `migration:revert` trong package.json
-- [ ] Entity đầu tiên: `User` (id, email unique, username unique, password `select: false`, bio, image, createdAt, updatedAt)
+- [x] Cài `@nestjs/typeorm typeorm mysql2` + `dotenv` (devDep, cho CLI migration)
+- [x] MySQL chạy bằng Docker Compose (`docker-compose.yml`, service `mysql:8.4`, cổng **3307**)
+- [x] Thêm `DB_*` vào zod schema — `Env` type tự lớn theo
+- [x] `TypeOrmModule.forRootAsync` + `inject: [ConfigService]` — không hardcode credential
+- [x] `synchronize: false` ngay từ đầu, dùng migration thật
+- [x] `src/database/data-source.ts` cho TypeORM CLI (chạy NGOÀI Nest DI, tái dùng `validateEnv`)
+- [x] Script `migration:generate` / `migration:run` / `migration:revert` trong package.json
+- [x] Entity `User` (id, email unique, username unique, password `select: false`, bio, image, createdAt, updatedAt)
 
-**Checkpoint:** `pnpm migration:run` tạo được bảng `users` trong MySQL; app boot lên kết nối DB thành công.
+**Checkpoint:** ✅ bảng `users` tồn tại với 8 cột + 2 unique index; `migrations` ghi nhận `CreateUsersTable`; app boot kết nối DB thành công; revert/run hoạt động.
+
+> Bẫy đã gặp:
+> - Cột `nullable: true` phải ghi `type` tường minh — union `string | null` chỉ phát ra metadata `Object`, TypeORM không suy được kiểu cột.
+> - TypeORM 1.x cần **Node >= 22** (đã thêm `.nvmrc` + `engines`). Node cũ chỉ làm vỡ CLI, app vẫn chạy nên rất dễ tưởng nhầm là xong.
+> - Cổng 3306 bị MySQL 8.1.0 cài sẵn trên máy chiếm → container dùng 3307.
 
 ---
 

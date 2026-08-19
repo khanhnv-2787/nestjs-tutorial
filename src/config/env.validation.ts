@@ -5,6 +5,11 @@ const envSchema = z.object({
     .enum(['development', 'test', 'production'])
     .default('development'),
   PORT: z.coerce.number().int().positive().max(65535).default(3000),
+  DB_HOST: z.string().min(1).default('localhost'),
+  DB_PORT: z.coerce.number().int().positive().max(65535).default(3306),
+  DB_USERNAME: z.string().min(1),
+  DB_PASSWORD: z.string().min(1),
+  DB_NAME: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;
