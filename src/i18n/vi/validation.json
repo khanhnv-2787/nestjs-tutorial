@@ -1,0 +1,8 @@
+{
+  "IS_STRING": "{property} phải là chuỗi",
+  "IS_NOT_EMPTY": "{property} không được để trống",
+  "IS_EMAIL": "{property} phải là email hợp lệ",
+  "MIN_LENGTH": "{property} phải có ít nhất {constraints.0} ký tự",
+  "MAX_LENGTH": "{property} không được vượt quá {constraints.0} ký tự",
+  "IS_OBJECT": "{property} phải là một object"
+}

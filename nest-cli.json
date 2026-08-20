@@ -7,7 +7,15 @@
     "plugins": [
       {
         "name": "@nestjs/swagger",
-        "options": { "introspectComments": true }
+        "options": {
+          "introspectComments": true
+        }
+      }
+    ],
+    "assets": [
+      {
+        "include": "i18n/**/*.json",
+        "watchAssets": true
       }
     ]
   }

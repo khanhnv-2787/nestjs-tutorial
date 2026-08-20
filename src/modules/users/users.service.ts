@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+import { I18nService } from 'nestjs-i18n';
 import { Repository } from 'typeorm';
 import { CreateUserBodyDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
@@ -14,6 +15,7 @@ export class UsersService {
     // Đây là DI: service không tự tạo repository, ai đó đưa cho nó.
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly i18n: I18nService,
   ) {}
 
   async createUser(data: CreateUserBodyDto): Promise<User> {
@@ -26,8 +28,8 @@ export class UsersService {
     if (existing) {
       throw new ConflictException(
         existing.email === data.email
-          ? 'Email đã được sử dụng'
-          : 'Username đã được sử dụng',
+          ? this.i18n.t('user.email_taken')
+          : this.i18n.t('user.username_taken'),
       );
     }
 
@@ -46,7 +48,7 @@ export class UsersService {
     } catch (error) {
       // Lưới an toàn cho race condition: 2 request cùng lúc lọt qua findOne ở trên.
       if (this.isDuplicateKeyError(error)) {
-        throw new ConflictException('Email hoặc username đã được sử dụng');
+        throw new ConflictException(this.i18n.t('user.credentials_taken'));
       }
       throw error;
     }

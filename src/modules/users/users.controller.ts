@@ -14,6 +14,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { I18nService } from 'nestjs-i18n';
 import { CreateUserDto } from './dto/create-user.dto';
 import { toUserResponse, type UserResponseDto } from './dto/user-response.dto';
 import { UsersService } from './users.service';
@@ -25,7 +26,10 @@ import { UsersService } from './users.service';
 // ('/api' là global prefix đặt ở main.ts).
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly i18n: I18nService,
+  ) {}
 
   // POST /api/users
   //
@@ -58,7 +62,10 @@ export class UsersController {
   ): Promise<UserResponseDto> {
     const user = await this.usersService.findById(id);
     if (!user) {
-      throw new NotFoundException(`Không tìm thấy user id ${id}`);
+      // args điền vào placeholder {id} trong file dịch
+      throw new NotFoundException(
+        this.i18n.t('user.not_found', { args: { id } }),
+      );
     }
     return toUserResponse(user);
   }

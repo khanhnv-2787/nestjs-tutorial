@@ -1,0 +1,6 @@
+{
+  "email_taken": "Email đã được sử dụng",
+  "username_taken": "Username đã được sử dụng",
+  "credentials_taken": "Email hoặc username đã được sử dụng",
+  "not_found": "Không tìm thấy user id {id}"
+}

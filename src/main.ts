@@ -1,6 +1,6 @@
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
 import { AppModule } from './app.module';
 import type { Env } from './config/env.validation';
 import { setupSwagger } from './config/swagger.config';
@@ -13,7 +13,9 @@ async function bootstrap() {
 
   // PIPE GLOBAL: chạy cho MỌI endpoint, trước khi request tới controller.
   app.useGlobalPipes(
-    new ValidationPipe({
+    // I18nValidationPipe KẾ THỪA ValidationPipe -> giữ nguyên mọi option cũ,
+    // chỉ khác là ném ra exception mang khoá dịch thay vì chuỗi cứng.
+    new I18nValidationPipe({
       // Xoá field không được khai báo (không có decorator) trong DTO.
       // Chống mass-assignment.
       whitelist: true,
@@ -22,6 +24,11 @@ async function bootstrap() {
       // Biến plain object thành INSTANCE THẬT của DTO class + ép kiểu param/query.
       transform: true,
     }),
+  );
+
+  // Bắt I18nValidationException do pipe trên ném ra, dịch rồi format thành 400.
+  app.useGlobalFilters(
+    new I18nValidationExceptionFilter({ detailedErrors: false }),
   );
 
   setupSwagger(app);
