@@ -17,5 +17,20 @@ services:
       interval: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    container_name: conduit-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - conduit-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
-  conduit-mysql-data: # khai báo named volume dùng ở trên
+  conduit-mysql-data:
+  conduit-redis-data: # khai báo named volume dùng ở trên
