@@ -3,7 +3,7 @@
 Mục tiêu: mỗi giai đoạn học **1–2 khái niệm NestJS mới**, làm xong là chạy được và test được bằng REST client.
 Nguyên tắc: không nhảy cóc — feature sau luôn dùng lại thứ feature trước đã dựng.
 
-Trạng thái hiện tại: **đã xong Giai đoạn 0 và 1**. Nền móng config/validation + MySQL 8.4 (Docker, cổng 3307) + TypeORM với migration thật, bảng `users` đã tạo. Tiếp theo: Giai đoạn 2 (signup + hash password).
+Trạng thái hiện tại: **đã xong Giai đoạn 0, 1, 2**. Nền móng config/validation, MySQL 8.4 (Docker, cổng 3307) + TypeORM migration, và module Users với signup + hash password. Tiếp theo: Giai đoạn 3 (JWT).
 
 ---
 
@@ -46,17 +46,22 @@ Trạng thái hiện tại: **đã xong Giai đoạn 0 và 1**. Nền móng conf
 
 ---
 
-## Giai đoạn 2 — Users: đăng ký + đọc/sửa profile (1 ngày)
+## Giai đoạn 2 — Users: đăng ký ✅ HOÀN THÀNH
 
-**Học:** module/controller/service/repository, DTO + class-validator, custom provider (hash password).
+**Học:** module nghiệp vụ đầu tiên (module/controller/service/repository), `forFeature` + `@InjectRepository`, DTO + class-validator, hash password.
 
-- [ ] `POST /api/users` — signup
-- [ ] Hash password bằng **bcrypt** (hoặc argon2), không bao giờ lưu plain text
-- [ ] DTO `CreateUserDto` với `@IsEmail`, `@MinLength`…
-- [ ] Không bao giờ trả `password` ra response — dùng `@Exclude()` + `ClassSerializerInterceptor`, hoặc mapper thủ công
-- [ ] `GET /api/user` và `PUT /api/user` (làm phần route trước, phần bảo vệ để giai đoạn 3)
+- [x] `UsersModule` + `TypeOrmModule.forFeature([User])`
+- [x] DTO `CreateUserDto` theo envelope RealWorld `{ user: {...} }` + `@ValidateNested` + `@Type`
+- [x] Hash password bằng **bcrypt** (native, 10 rounds)
+- [x] `POST /api/users` — signup, trả 201
+- [x] Mapper `toUserResponse()` — danh sách trắng, password không bao giờ lọt ra
+- [x] Trùng email/username → `ConflictException` (409) + bắt lỗi MySQL 1062 chống race condition
+- [x] `GET /api/users/:id` — route TẠM, sẽ xoá ở giai đoạn 3
 
-**Checkpoint:** signup 2 lần cùng email → lỗi 422/409 rõ ràng, không phải lỗi MySQL raw lòi ra ngoài.
+**Checkpoint:** ✅ signup 201 không lộ password; trùng email/username → 409; body sai → 400 liệt kê đủ lỗi; field lạ → 400; DB lưu hash `$2b$10$` dài 60 ký tự; route tạm trả 200/404/400 đúng.
+
+> `GET /api/user` và `PUT /api/user` chuyển sang Giai đoạn 3: cả hai cần biết "user đang đăng nhập là ai", mà thứ đó chỉ có sau khi có JWT.
+> Đã học thêm: `ValidationPipe` chỉ chạy khi kiểu tham số là **class** — `any`/`interface` làm validation tắt trong im lặng.
 
 ---
 
