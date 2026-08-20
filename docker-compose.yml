@@ -1,0 +1,21 @@
+services:
+  mysql: # tên service, dùng để gọi trong các lệnh
+    image: mysql:8.4 # bản MySQL nào — ghim số cụ thể, đừng dùng "latest"
+    container_name: conduit-mysql
+    restart: unless-stopped # tự bật lại nếu container chết
+    environment: # MySQL đọc các biến này lúc khởi tạo lần đầu
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: conduit # tự tạo sẵn database tên conduit
+      MYSQL_USER: conduit # tự tạo sẵn user + cấp quyền trên database đó
+      MYSQL_PASSWORD: conduit
+    ports:
+      - '3307:3306'   # cổng-trên-máy-bạn : cổng-trong-container (3306 đã bị MySQL cài sẵn chiếm)
+    volumes:
+      - conduit-mysql-data:/var/lib/mysql # nơi lưu dữ liệu, sống lâu hơn container
+    healthcheck: # cách Docker biết MySQL đã sẵn sàng nhận kết nối
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-proot']
+      interval: 5s
+      retries: 20
+
+volumes:
+  conduit-mysql-data: # khai báo named volume dùng ở trên
