@@ -1,8 +1,9 @@
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import type { Env } from './config/env.validation';
+import { setupSwagger } from './config/swagger.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,21 +15,18 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       // Xoá field không được khai báo (không có decorator) trong DTO.
-      // Client gửi { email, password, role: "admin" } mà DTO không có `role`
-      // -> field đó bị loại trước khi tới service. Chống mass-assignment.
+      // Chống mass-assignment.
       whitelist: true,
       // Thay vì lặng lẽ xoá, trả luôn 400.
       forbidNonWhitelisted: true,
-      // Chạy class-transformer: biến plain object thành INSTANCE THẬT của DTO class.
-      // Không có nó: `body instanceof CreateUserDto` = false, method trên DTO không tồn tại.
-      // Nó cũng cho phép ép kiểu param/query từ string sang number (dùng nhiều ở giai đoạn 6).
+      // Biến plain object thành INSTANCE THẬT của DTO class + ép kiểu param/query.
       transform: true,
     }),
   );
 
-  const configService = app.get<ConfigService<Env, true>>(ConfigService);
-  const port = configService.get('PORT', { infer: true });
+  setupSwagger(app);
 
-  await app.listen(port);
+  const configService = app.get<ConfigService<Env, true>>(ConfigService);
+  await app.listen(configService.get('PORT', { infer: true }));
 }
 void bootstrap();

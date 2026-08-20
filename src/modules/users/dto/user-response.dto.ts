@@ -1,17 +1,27 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../entities/user.entity';
 
-export interface UserResponse {
-  user: {
-    email: string;
-    username: string;
-    bio: string | null;
-    image: string | null;
-  };
+export class UserDto {
+  @ApiProperty({ example: 'khanh@test.com' })
+  email: string;
+
+  @ApiProperty({ example: 'khanh' })
+  username: string;
+
+  @ApiProperty({ example: null, nullable: true, type: String })
+  bio: string | null;
+
+  @ApiProperty({ example: null, nullable: true, type: String })
+  image: string | null;
 }
 
-// Danh sách TRẮNG: chỉ những field liệt kê ở đây mới ra ngoài.
-// Thêm cột mới vào entity sẽ KHÔNG tự động lộ ra API.
-export function toUserResponse(user: User): UserResponse {
+export class UserResponseDto {
+  @ApiProperty({ type: UserDto })
+  user: UserDto;
+}
+
+// Danh sách TRẮNG: chỉ field liệt kê ở đây mới ra ngoài.
+export function toUserResponse(user: User): UserResponseDto {
   return {
     user: {
       email: user.email,
