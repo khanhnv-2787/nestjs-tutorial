@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule, type TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { validateEnv, type Env } from './config/env.validation';
+import { validateEnv } from './config/env.validation';
+import { DatabaseModule } from './database/database.module';
+import { I18nConfigModule } from './i18n/i18n.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -11,29 +13,9 @@ import { validateEnv, type Env } from './config/env.validation';
       isGlobal: true,
       validate: validateEnv,
     }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>): TypeOrmModuleOptions => {
-        const host = config.get('DB_HOST', { infer: true });
-        const port = config.get('DB_PORT', { infer: true });
-        const username = config.get('DB_USERNAME', { infer: true });
-        const password = config.get('DB_PASSWORD', { infer: true });
-        const database = config.get('DB_NAME', { infer: true });
-        const isDev = config.get('NODE_ENV', { infer: true }) === 'development';
-
-        return {
-          type: 'mysql',
-          host,
-          port,
-          username,
-          password,
-          database,
-          autoLoadEntities: true,
-          synchronize: false,
-          logging: isDev,
-        };
-      },
-    }),
+    I18nConfigModule,
+    DatabaseModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

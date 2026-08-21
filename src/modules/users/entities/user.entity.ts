@@ -20,10 +20,12 @@ export class User {
   username: string;
 
   // select: false -> KHÔNG được load trong query thường.
-  // find(), findOne() sẽ trả về User mà `password` là undefined.
-  // Muốn lấy phải yêu cầu tường minh bằng addSelect (dùng ở login, giai đoạn 3).
+  // Khai `password?` (có dấu ?) vì đó là SỰ THẬT lúc chạy: findOne/findById
+  // trả về User mà password là undefined. Khai `string` là để TypeScript
+  // nói dối, và chỗ nào tin nó sẽ vỡ lúc runtime.
+  // Muốn lấy hash phải xin tường minh bằng addSelect.
   @Column({ select: false })
-  password: string;
+  password?: string;
 
   // type: 'text' vì bio có thể dài; varchar mặc định 255 ký tự là hơi chật.
   @Column({ type: 'text', nullable: true })
