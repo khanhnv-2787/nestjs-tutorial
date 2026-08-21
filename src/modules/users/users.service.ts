@@ -84,11 +84,13 @@ export class UsersService {
   async findByEmailWithPassword(
     email: string,
   ): Promise<(User & { password: string }) | null> {
-    return this.usersRepository
-      .createQueryBuilder('user')
-      // addSelect ghi đè select: false của entity cho đúng query này
-      .addSelect('user.password')
-      .where('user.email = :email', { email })
-      .getOne() as Promise<(User & { password: string }) | null>;
+    return (
+      this.usersRepository
+        .createQueryBuilder('user')
+        // addSelect ghi đè select: false của entity cho đúng query này
+        .addSelect('user.password')
+        .where('user.email = :email', { email })
+        .getOne() as Promise<(User & { password: string }) | null>
+    );
   }
 }
