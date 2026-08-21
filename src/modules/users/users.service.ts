@@ -73,6 +73,7 @@ export class UsersService {
   async findById(id: number): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id } });
   }
+
   /**
    * Tìm user KÈM password hash — CHỈ dùng cho việc xác thực đăng nhập.
    * Mọi chỗ khác phải dùng findById để hash không bị load ra vô ý.
@@ -84,11 +85,13 @@ export class UsersService {
   async findByEmailWithPassword(
     email: string,
   ): Promise<(User & { password: string }) | null> {
-    return this.usersRepository
-      .createQueryBuilder('user')
-      // addSelect ghi đè select: false của entity cho đúng query này
-      .addSelect('user.password')
-      .where('user.email = :email', { email })
-      .getOne() as Promise<(User & { password: string }) | null>;
+    return (
+      this.usersRepository
+        .createQueryBuilder('user')
+        // addSelect ghi đè select: false của entity cho đúng query này
+        .addSelect('user.password')
+        .where('user.email = :email', { email })
+        .getOne() as Promise<(User & { password: string }) | null>
+    );
   }
 }
