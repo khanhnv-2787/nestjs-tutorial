@@ -9,13 +9,13 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 @Module({
   imports: [
-    // UsersModule đã export UsersService từ PR trước -> dùng lại được ngay.
+    // UsersModule đã export UsersService -> dùng lại được ngay.
     UsersModule,
     PassportModule,
-    // registerAsync: pattern thứ BA bạn gặp, sau TypeOrmModule và I18nModule.
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
@@ -30,9 +30,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   providers: [
     AuthService,
     JwtStrategy,
-    // APP_GUARD: đăng ký guard cho TOÀN APP nhưng vẫn nằm trong DI container,
-    // nhờ đó JwtAuthGuard inject được Reflector và I18nService.
-    // (Cách app.useGlobalGuards() trong main.ts thì KHÔNG inject được gì.)
+    TokenBlacklistService,
+    // APP_GUARD: đăng ký guard cho TOÀN APP qua DI container, nên dependency
+    // (Reflector, I18nService) được inject tự động.
+    // app.useGlobalGuards() cũng làm được nhưng phải tự new + tự app.get()
+    // từng dependency, và không dùng được provider request-scoped.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
   exports: [AuthService],

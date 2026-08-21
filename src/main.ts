@@ -8,6 +8,10 @@ import { setupSwagger } from './config/swagger.config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Cho phép onApplicationShutdown của RedisModule chạy khi nhận SIGINT/SIGTERM.
+  // Không bật thì Ctrl+C sẽ không đóng kết nối Redis.
+  app.enableShutdownHooks();
+
   // Mọi route sẽ có tiền tố /api  ->  @Get() trong AppController = GET /api
   app.setGlobalPrefix('api');
 
