@@ -1,8 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { I18nService } from 'nestjs-i18n';
 import { Repository } from 'typeorm';
+import { isDuplicateKeyError } from '../../common/database/is-duplicate-key-error';
 import { CreateUserBodyDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 
@@ -10,6 +11,9 @@ const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class UsersService {
+  // Logger của Nest, gắn tên class làm context -> log ra có tiền tố [UsersService].
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     // @InjectRepository(User) lấy đúng provider mà forFeature([User]) đã tạo.
     // Đây là DI: service không tự tạo repository, ai đó đưa cho nó.
@@ -21,7 +25,7 @@ export class UsersService {
   async createUser(data: CreateUserBodyDto): Promise<User> {
     // Kiểm tra sớm để trả lỗi đẹp. Nhưng ĐÂY KHÔNG PHẢI đảm bảo cuối cùng:
     // hai request cùng lúc đều có thể thấy "chưa tồn tại". Ràng buộc UNIQUE
-    // ở DB mới là thứ chặn thật -> vẫn phải bắt lỗi 1062 bên dưới.
+    // ở DB mới là thứ chặn thật -> vẫn phải bắt lỗi trùng khoá bên dưới.
     const existing = await this.usersRepository.findOne({
       where: [{ email: data.email }, { username: data.username }],
     });
@@ -44,27 +48,29 @@ export class UsersService {
 
     try {
       // save() mới thực sự INSERT.
-      return await this.usersRepository.save(user);
+      const saved = await this.usersRepository.save(user);
+      this.logger.log(`Đã tạo user id=${saved.id} username=${saved.username}`);
+      return saved;
     } catch (error) {
       // Lưới an toàn cho race condition: 2 request cùng lúc lọt qua findOne ở trên.
-      if (this.isDuplicateKeyError(error)) {
+      if (isDuplicateKeyError(error)) {
+        // Log ở mức warn kèm ngữ cảnh: đây là chuyện bất thường (2 request
+        // cùng lúc) nhưng không phải sự cố hệ thống.
+        this.logger.warn(
+          `Trùng khoá khi tạo user: email=${data.email} username=${data.username}`,
+        );
         throw new ConflictException(this.i18n.t('user.credentials_taken'));
       }
+      // Lỗi không lường trước -> log kèm nguyên nhân gốc rồi ném lên tầng trên.
+      this.logger.error(
+        `Lỗi khi tạo user email=${data.email}`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }
 
   async findById(id: number): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id } });
-  }
-
-  private isDuplicateKeyError(error: unknown): boolean {
-    // MySQL trả errno 1062 cho vi phạm UNIQUE.
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'driverError' in error &&
-      (error.driverError as { errno?: number })?.errno === 1062
-    );
   }
 }
