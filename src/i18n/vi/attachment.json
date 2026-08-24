@@ -1,0 +1,6 @@
+{
+  "not_found": "Không tìm thấy file",
+  "invalid_type": "Chỉ chấp nhận ảnh định dạng JPEG, PNG hoặc WebP",
+  "too_large": "File vượt quá dung lượng cho phép",
+  "required": "Vui lòng chọn file để tải lên"
+}
