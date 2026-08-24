@@ -1,9 +1,16 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { I18nService } from 'nestjs-i18n';
 import { Not, Repository } from 'typeorm';
 import { isDuplicateKeyError } from '../../common/database/is-duplicate-key-error';
+import { AttachmentsService } from '../attachments/attachments.service';
+import { ATTACHABLE_TYPE } from '../attachments/entities/attachment.entity';
 import {
   TokenBlacklistService,
   type RevocableToken,
@@ -14,6 +21,9 @@ import { User } from './entities/user.entity';
 
 const BCRYPT_ROUNDS = 10;
 
+/** Chỉ nhận ảnh. Kiểm theo MIME type do multer đọc từ phần header của file. */
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -22,6 +32,7 @@ export class UsersService {
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     private readonly tokenBlacklist: TokenBlacklistService,
+    private readonly attachmentsService: AttachmentsService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -129,6 +140,37 @@ export class UsersService {
       );
       throw error;
     }
+  }
+
+  /**
+   * Đổi ảnh đại diện.
+   *
+   * Avatar cũ bị xoá cả file lẫn bản ghi — mỗi user chỉ giữ một ảnh, không
+   * để rác tích lại trên đĩa sau mỗi lần đổi.
+   */
+  async updateAvatar(user: User, file?: Express.Multer.File): Promise<User> {
+    if (!file) {
+      throw new BadRequestException(this.i18n.t('attachment.required'));
+    }
+    if (!ALLOWED_AVATAR_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException(this.i18n.t('attachment.invalid_type'));
+    }
+
+    await this.attachmentsService.removeAllFor(ATTACHABLE_TYPE.USER, user.id);
+
+    const attachment = await this.attachmentsService.create(
+      file,
+      ATTACHABLE_TYPE.USER,
+      user.id,
+    );
+
+    // Lưu ĐƯỜNG DẪN API chứ không phải đường dẫn trên đĩa. Client chỉ biết
+    // tới id, không biết file nằm ở đâu trong hệ thống file.
+    user.image = `/api/attachments/${attachment.id}`;
+
+    const saved = await this.usersRepository.save(user);
+    this.logger.log(`Đã đổi avatar cho user id=${saved.id}`);
+    return saved;
   }
 
   async findById(id: number): Promise<User | null> {

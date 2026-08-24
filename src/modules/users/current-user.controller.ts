@@ -1,7 +1,19 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
+  ApiConsumes,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -49,6 +61,43 @@ export class CurrentUserController {
     @Body() dto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const updated = await this.usersService.updateUser(user, dto.user, payload);
+    return toUserResponse(updated);
+  }
+
+  // POST /api/user/avatar
+  //
+  // Tách riêng khỏi PUT /api/user vì body là multipart/form-data, không phải
+  // JSON — trộn hai kiểu vào một endpoint sẽ làm DTO lồng nhau `{ user: {...} }`
+  // không dùng được nữa.
+  @ApiOperation({
+    summary: 'Đổi ảnh đại diện',
+    description:
+      'Chỉ nhận JPEG/PNG/WebP. Ảnh cũ bị xoá cả file lẫn bản ghi. Trả về user với `image` là đường dẫn API tới ảnh mới.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        avatar: { type: 'string', format: 'binary' },
+      },
+      required: ['avatar'],
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Thiếu file hoặc định dạng không hợp lệ',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Thiếu token hoặc token không hợp lệ',
+  })
+  // 'avatar' phải khớp tên field trong form-data phía client.
+  @UseInterceptors(FileInterceptor('avatar'))
+  @Post('avatar')
+  async uploadAvatar(
+    @CurrentUser() user: User,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<UserResponseDto> {
+    const updated = await this.usersService.updateAvatar(user, file);
     return toUserResponse(updated);
   }
 }
