@@ -1,19 +1,22 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { TokenModule } from '../token/token.module';
 import { CurrentUserController } from './current-user.controller';
+import { UserFollow } from './entities/user-follow.entity';
 import { User } from './entities/user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
-  // forFeature = "module này cần repository của những entity sau".
-  // Nó tạo ra provider Repository<User> trong phạm vi module này,
-  // ĐỒNG THỜI báo cho autoLoadEntities (bật ở DatabaseModule) biết
-  // entity User tồn tại -> giờ app mới thực sự biết bảng users.
-  imports: [TypeOrmModule.forFeature([User])],
+  // Thêm UserFollow để autoLoadEntities biết tới nó.
+  // Không khai ở đây thì app chạy vẫn không "thấy" bảng user_follows.
+  imports: [
+    TypeOrmModule.forFeature([User, UserFollow]),
+    // Cần để thu hồi token hiện tại khi user đổi mật khẩu.
+    TokenModule,
+  ],
   controllers: [UsersController, CurrentUserController],
   providers: [UsersService],
-  // exports để AuthModule dùng lại UsersService (tìm user lúc login).
   exports: [UsersService],
 })
 export class UsersModule {}

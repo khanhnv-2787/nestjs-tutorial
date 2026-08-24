@@ -6,7 +6,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Env } from '../../../config/env.validation';
 import { User } from '../../users/entities/user.entity';
 import { UsersService } from '../../users/users.service';
-import { TokenBlacklistService } from '../token-blacklist.service';
+import { TokenBlacklistService } from '../../token/token-blacklist.service';
 
 /** Hình dạng payload mà AuthService ký ra. */
 export interface JwtPayload {
