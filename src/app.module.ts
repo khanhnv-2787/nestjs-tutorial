@@ -5,7 +5,9 @@ import { AppService } from './app.service';
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { I18nConfigModule } from './i18n/i18n.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -15,7 +17,9 @@ import { UsersModule } from './modules/users/users.module';
     }),
     I18nConfigModule,
     DatabaseModule,
+    RedisModule,
     UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

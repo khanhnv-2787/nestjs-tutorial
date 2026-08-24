@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from './common/decorators/public.decorator';
 import { AppService } from './app.service';
 
 @ApiTags('health')
@@ -8,6 +9,7 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   // GET /api
+  @Public()
   @ApiOperation({
     summary: 'Kiểm tra service còn sống',
     description:
