@@ -22,6 +22,11 @@ const envSchema = z.object({
     .string()
     .regex(/^\d+[smhdwy]$/, 'phải có dạng 60s / 30m / 12h / 7d / 2w / 1y')
     .default('7d'),
+
+  // Upload file. Thư mục này nằm NGOÀI thư mục tĩnh — file chỉ tới được
+  // qua API có kiểm quyền, không truy cập thẳng bằng URL.
+  UPLOAD_DIR: z.string().min(1).default('storage/uploads'),
+  MAX_UPLOAD_SIZE_MB: z.coerce.number().int().positive().max(50).default(2),
 });
 
 export type Env = z.infer<typeof envSchema>;

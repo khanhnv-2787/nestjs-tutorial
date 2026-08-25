@@ -2,5 +2,6 @@
   "email_taken": "Email is already taken",
   "username_taken": "Username is already taken",
   "credentials_taken": "Email or username is already taken",
-  "not_found": "User with id {id} not found"
+  "not_found": "User with id {id} not found",
+  "not_found_username": "User with username {username} not found"
 }

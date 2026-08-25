@@ -3,11 +3,11 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { I18nService } from 'nestjs-i18n';
+import { TokenBlacklistService } from '../token/token-blacklist.service';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginBodyDto } from './dto/login.dto';
 import type { JwtPayload } from './strategies/jwt.strategy';
-import { TokenBlacklistService } from './token-blacklist.service';
 
 @Injectable()
 export class AuthService {
@@ -45,6 +45,6 @@ export class AuthService {
    * ở mỗi request sau đó.
    */
   async logout(payload: JwtPayload): Promise<void> {
-    await this.tokenBlacklist.revoke(payload.jti, payload.exp);
+    await this.tokenBlacklist.revokeToken(payload);
   }
 }

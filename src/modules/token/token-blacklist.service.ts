@@ -2,6 +2,18 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 
+/**
+ * Phần tối thiểu của một token cần biết để thu hồi nó.
+ *
+ * Khai riêng interface này (thay vì dùng JwtPayload của AuthModule) để
+ * UsersModule không phải phụ thuộc vào chi tiết của AuthModule.
+ */
+export interface RevocableToken {
+  jti: string;
+  /** Thời điểm hết hạn, đơn vị GIÂY (claim `exp` của JWT). */
+  exp: number;
+}
+
 @Injectable()
 export class TokenBlacklistService {
   private readonly logger = new Logger(TokenBlacklistService.name);
@@ -31,6 +43,11 @@ export class TokenBlacklistService {
     // SET key value EX ttl  — 'EX' tính bằng giây.
     await this.redis.set(this.key(jti), '1', 'EX', ttlSeconds);
     this.logger.log(`Đã thu hồi token jti=${jti}, còn ${ttlSeconds}s`);
+  }
+
+  /** Dạng tiện dụng khi đã có sẵn cả payload. */
+  async revokeToken(token: RevocableToken): Promise<void> {
+    await this.revoke(token.jti, token.exp);
   }
 
   async isRevoked(jti: string): Promise<boolean> {

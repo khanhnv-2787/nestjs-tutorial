@@ -5,17 +5,18 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { Env } from '../../config/env.validation';
+import { TokenModule } from '../token/token.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { TokenBlacklistService } from './token-blacklist.service';
 
 @Module({
   imports: [
     // UsersModule đã export UsersService -> dùng lại được ngay.
     UsersModule,
     PassportModule,
+    TokenModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
@@ -30,7 +31,6 @@ import { TokenBlacklistService } from './token-blacklist.service';
   providers: [
     AuthService,
     JwtStrategy,
-    TokenBlacklistService,
     // APP_GUARD: đăng ký guard cho TOÀN APP qua DI container, nên dependency
     // (Reflector, I18nService) được inject tự động.
     // app.useGlobalGuards() cũng làm được nhưng phải tự new + tự app.get()

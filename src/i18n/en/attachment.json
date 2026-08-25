@@ -1,0 +1,6 @@
+{
+  "not_found": "File not found",
+  "invalid_type": "Only JPEG, PNG or WebP images are accepted",
+  "too_large": "File exceeds the maximum allowed size",
+  "required": "Please select a file to upload"
+}
