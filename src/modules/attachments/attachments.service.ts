@@ -5,7 +5,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
-import { Repository } from 'typeorm';
+import { EntityManager, Not, Repository } from 'typeorm';
 import type { Env } from '../../config/env.validation';
 import { Attachment, type AttachableType } from './entities/attachment.entity';
 
@@ -36,7 +36,13 @@ export class AttachmentsService {
     file: Express.Multer.File,
     attachableType: AttachableType,
     attachableId: number,
+    manager?: EntityManager,
   ): Promise<Attachment> {
+    // Nhận EntityManager từ ngoài để thao tác này nằm CHUNG transaction với
+    // lời gọi bên gọi. Không truyền thì dùng repository mặc định.
+    const repository = manager
+      ? manager.getRepository(Attachment)
+      : this.attachmentRepository;
     const id = randomUUID();
     // Chia theo năm/tháng để một thư mục không phình lên hàng trăm nghìn file.
     const now = new Date();
@@ -47,7 +53,7 @@ export class AttachmentsService {
     await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, file.buffer);
 
-    const attachment = this.attachmentRepository.create({
+    const attachment = repository.create({
       id,
       attachableType,
       attachableId,
@@ -57,7 +63,7 @@ export class AttachmentsService {
       fileSize: file.size,
     });
 
-    const saved = await this.attachmentRepository.save(attachment);
+    const saved = await repository.save(attachment);
     this.logger.log(
       `Đã lưu attachment id=${saved.id} cho ${attachableType}#${attachableId} (${file.size} byte)`,
     );
@@ -89,13 +95,23 @@ export class AttachmentsService {
     return absolute;
   }
 
-  /** Xoá mọi file cũ của một đối tượng — dùng khi thay avatar. */
+  /**
+   * Xoá file cũ của một đối tượng.
+   *
+   * @param exceptId id cần GIỮ LẠI — dùng khi đã tạo bản ghi mới và chỉ muốn
+   *   dọn các bản ghi cũ.
+   */
   async removeAllFor(
     attachableType: AttachableType,
     attachableId: number,
+    exceptId?: string,
   ): Promise<void> {
     const olds = await this.attachmentRepository.find({
-      where: { attachableType, attachableId },
+      where: {
+        attachableType,
+        attachableId,
+        ...(exceptId ? { id: Not(exceptId) } : {}),
+      },
     });
 
     for (const old of olds) {

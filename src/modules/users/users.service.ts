@@ -7,8 +7,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { I18nService } from 'nestjs-i18n';
-import { Not, Repository } from 'typeorm';
+import { DataSource, Not, Repository } from 'typeorm';
 import { isDuplicateKeyError } from '../../common/database/is-duplicate-key-error';
+import { isAllowedImageMime } from '../attachments/attachment.constants';
 import { AttachmentsService } from '../attachments/attachments.service';
 import { ATTACHABLE_TYPE } from '../attachments/entities/attachment.entity';
 import {
@@ -21,9 +22,6 @@ import { User } from './entities/user.entity';
 
 const BCRYPT_ROUNDS = 10;
 
-/** Chỉ nhận ảnh. Kiểm theo MIME type do multer đọc từ phần header của file. */
-const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -33,6 +31,7 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
     private readonly tokenBlacklist: TokenBlacklistService,
     private readonly attachmentsService: AttachmentsService,
+    private readonly dataSource: DataSource,
     private readonly i18n: I18nService,
   ) {}
 
@@ -145,30 +144,54 @@ export class UsersService {
   /**
    * Đổi ảnh đại diện.
    *
-   * Avatar cũ bị xoá cả file lẫn bản ghi — mỗi user chỉ giữ một ảnh, không
-   * để rác tích lại trên đĩa sau mỗi lần đổi.
+   * THỨ TỰ QUAN TRỌNG: tạo ảnh mới trước, cập nhật user, rồi mới dọn ảnh cũ.
+   * Làm ngược lại (xoá cũ trước) thì bất kỳ lỗi nào ở giữa cũng làm mất avatar
+   * cũ mà không có gì hoàn tác được — file đã xoá khỏi đĩa thì transaction
+   * cũng không cứu lại được.
+   *
+   * Hai thao tác GHI DB (insert attachment + update user) nằm chung một
+   * transaction để không bao giờ có bản ghi attachment mà user lại chưa trỏ
+   * tới nó. Riêng việc ghi file xuống đĩa thì nằm ngoài transaction — hệ
+   * thống file không tham gia được. Rollback chỉ để lại một file mồ côi
+   * (rác, không phải mất dữ liệu).
    */
   async updateAvatar(user: User, file?: Express.Multer.File): Promise<User> {
     if (!file) {
       throw new BadRequestException(this.i18n.t('attachment.required'));
     }
-    if (!ALLOWED_AVATAR_TYPES.includes(file.mimetype)) {
+    // Lưới an toàn: fileFilter ở MulterModule đã chặn từ trước, nhưng service
+    // không nên phụ thuộc vào việc cấu hình đó còn nguyên.
+    if (!isAllowedImageMime(file.mimetype)) {
       throw new BadRequestException(this.i18n.t('attachment.invalid_type'));
     }
 
-    await this.attachmentsService.removeAllFor(ATTACHABLE_TYPE.USER, user.id);
+    const { saved, attachmentId } = await this.dataSource.transaction(
+      async (manager) => {
+        const attachment = await this.attachmentsService.create(
+          file,
+          ATTACHABLE_TYPE.USER,
+          user.id,
+          manager,
+        );
 
-    const attachment = await this.attachmentsService.create(
-      file,
-      ATTACHABLE_TYPE.USER,
-      user.id,
+        // Lưu ĐƯỜNG DẪN API chứ không phải đường dẫn trên đĩa. Client chỉ
+        // biết tới id, không biết file nằm ở đâu trong hệ thống file.
+        user.image = `/api/attachments/${attachment.id}`;
+
+        return {
+          saved: await manager.getRepository(User).save(user),
+          attachmentId: attachment.id,
+        };
+      },
     );
 
-    // Lưu ĐƯỜNG DẪN API chứ không phải đường dẫn trên đĩa. Client chỉ biết
-    // tới id, không biết file nằm ở đâu trong hệ thống file.
-    user.image = `/api/attachments/${attachment.id}`;
+    // Chỉ dọn ảnh cũ SAU KHI transaction đã commit thành công.
+    await this.attachmentsService.removeAllFor(
+      ATTACHABLE_TYPE.USER,
+      user.id,
+      attachmentId,
+    );
 
-    const saved = await this.usersRepository.save(user);
     this.logger.log(`Đã đổi avatar cho user id=${saved.id}`);
     return saved;
   }

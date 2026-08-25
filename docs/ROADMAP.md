@@ -7,15 +7,14 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 
 | PR | Nội dung | Trạng thái |
 |----|----------|-----------|
-| 1 | Init project + hello world + i18n + swagger | 🟡 thiếu i18n & swagger |
-| 2 | Migration thủ công + Authentication | 🟡 mới xong register |
-| 3 | Các API còn lại của User + upload avatar | ⬜ |
-| 4 | CRUD Articles | ⬜ |
+| 1 | Init project + hello world + i18n + swagger | ✅ xong (gộp vào PR #2) |
+| 2 | Migration thủ công + Authentication | ✅ xong (PR #2, #3) |
+| 3 | Các API còn lại của User + upload avatar | 🟡 đang review (PR #4) |
+| 4 | CRUD Articles | 🔜 **tiếp theo** |
 | 5 | CRD Comments | ⬜ |
 | 6 | E2E testing | ⬜ |
 
-Đã merge: PR #1 (nền móng config + MySQL/TypeORM migration).
-Đang mở: PR #2 (UsersModule + signup).
+Đã merge: PR #1, #2, #3. Đang mở: **PR #4** (các API còn lại của User).
 
 ---
 
@@ -24,16 +23,16 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 **Cơ bản**
 
 - [x] Setup được project
-- [ ] Hiểu và nắm được xử lý authentication
+- [x] Hiểu và nắm được xử lý authentication
 - [ ] Thực hiện được API CRUD theo chuẩn RESTful
-- [~] Migrate database thủ công: **add ✅, apply ✅, revert ✅, reset ⬜**
-- [ ] Format response bằng **serializer**, handle validate params DTO ✅, handle **search / filter / pagination**
+- [x] Migrate database thủ công: add / apply / revert / reset
+- [~] Format response: mapper thủ công ✅, validate params DTO ✅, **search / filter / pagination ⬜** (PR 4)
 
 **Nâng cao**
 
-- [ ] API docs: Swagger
+- [x] API docs: Swagger
 - [ ] Unit test & E2E test
-- [ ] Xử lý file (Multer, có thể dùng Cloudinary lưu ảnh)
+- [x] Xử lý file (Multer — lưu local theo hướng private; chưa dùng Cloudinary)
 - [ ] Gửi mail (`@nestjs/bull` + Redis) và lập lịch (`@nestjs/schedule`)
 
 ---
@@ -98,24 +97,25 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 
 ---
 
-## PR 3 — Các API còn lại của User + upload avatar ⬜
+## PR 3 — Các API còn lại của User + upload avatar 🟡 ĐANG REVIEW (PR #4)
 
-- [ ] **Update User** — `PUT /api/user`
-- [ ] **Get Profile** — `GET /api/profiles/:username`
-- [ ] **Follow / Unfollow** — `POST` / `DELETE /api/profiles/:username/follow`
-- [ ] Bảng nối `user_follows`, field `following` tính theo user đang đăng nhập
+- [x] **Update User** — `PUT /api/user` (kèm: đổi mật khẩu thì thu hồi token hiện tại)
+- [x] **Get Profile** — `GET /api/profiles/:username` (optional auth)
+- [x] **Follow / Unfollow** — `POST` / `DELETE /api/profiles/:username/follow`, idempotent
+- [x] Bảng nối `user_follows` (khoá chính ghép + `ON DELETE CASCADE`), field `following` theo user đang đăng nhập
+- [x] Guard optional-auth + `@OptionalAuth()` (dời từ PR 2 sang)
+- [x] Tách `TokenModule` để tránh phụ thuộc vòng
 
-### Upload avatar
+### Upload avatar — chọn hướng **PRIVATE**
 
-- [ ] Multer nhận file trong `PUT /api/user`
-- [ ] Chọn **một** hướng lưu trữ:
-  - **Public** — thư mục `public/`, truy cập thẳng bằng path
-  - **Private** — API riêng trả file, có xác thực + phân quyền
-- [ ] Bảng `attachments` thiết kế **polymorphic**:
-  - `id` kiểu **UUID string** (tránh bị scan tuần tự)
-  - `attachable_type` + `attachable_id` — thuộc về đối tượng nào
-  - `url`, `file_name`, `file_type`, `file_size`
-- [ ] Validate loại file và dung lượng trước khi lưu
+- [x] Multer (`memoryStorage`, giới hạn 2MB, chỉ JPEG/PNG/WebP)
+- [x] Hướng **private**: `GET /api/attachments/:id` bắt buộc đăng nhập, file nằm ngoài thư mục tĩnh
+- [x] Bảng `attachments` polymorphic: `id` UUID, `attachableType` + `attachableId`, `path`, `fileName`, `fileType`, `fileSize`
+- [x] Validate loại file và dung lượng trước khi lưu
+- [x] Đổi avatar thì xoá ảnh cũ (cả file lẫn bản ghi)
+
+> ⚠️ Lệch với mentor: upload tách thành `POST /api/user/avatar` thay vì gộp vào `PUT /api/user`
+> (JSON + multipart không trộn chung được với DTO lồng nhau). **Đang chờ mentor xác nhận.**
 
 ---
 
