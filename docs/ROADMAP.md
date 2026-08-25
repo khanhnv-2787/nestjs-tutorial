@@ -9,12 +9,12 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 |----|----------|-----------|
 | 1 | Init project + hello world + i18n + swagger | ✅ xong (gộp vào PR #2) |
 | 2 | Migration thủ công + Authentication | ✅ xong (PR #2, #3) |
-| 3 | Các API còn lại của User + upload avatar | 🟡 đang review (PR #4) |
+| 3 | Các API còn lại của User + upload avatar | ✅ xong (PR #4) |
 | 4 | CRUD Articles | 🔜 **tiếp theo** |
 | 5 | CRD Comments | ⬜ |
 | 6 | E2E testing | ⬜ |
 
-Đã merge: PR #1, #2, #3. Đang mở: **PR #4** (các API còn lại của User).
+Đã merge: PR #1, #2, #3, #4. Không có PR nào đang mở.
 
 ---
 
@@ -97,7 +97,7 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 
 ---
 
-## PR 3 — Các API còn lại của User + upload avatar 🟡 ĐANG REVIEW (PR #4)
+## PR 3 — Các API còn lại của User + upload avatar ✅ HOÀN THÀNH (PR #4)
 
 - [x] **Update User** — `PUT /api/user` (kèm: đổi mật khẩu thì thu hồi token hiện tại)
 - [x] **Get Profile** — `GET /api/profiles/:username` (optional auth)
@@ -114,8 +114,12 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 - [x] Validate loại file và dung lượng trước khi lưu
 - [x] Đổi avatar thì xoá ảnh cũ (cả file lẫn bản ghi)
 
-> ⚠️ Lệch với mentor: upload tách thành `POST /api/user/avatar` thay vì gộp vào `PUT /api/user`
-> (JSON + multipart không trộn chung được với DTO lồng nhau). **Đang chờ mentor xác nhận.**
+> Lệch với mentor: upload tách thành `POST /api/user/avatar` thay vì gộp vào `PUT /api/user`
+> (JSON + multipart không trộn chung được với DTO lồng nhau). Đã nêu trong PR, mentor merge.
+>
+> Bẫy đã gặp: `multer` phải cài **dependency trực tiếp** (pnpm chặn import gián tiếp).
+> Thứ tự đổi avatar phải là tạo mới → cập nhật user → mới dọn ảnh cũ; làm ngược lại
+> thì lỗi ở giữa là mất ảnh cũ, và transaction không cứu được vì file nằm ngoài DB.
 
 ---
 
