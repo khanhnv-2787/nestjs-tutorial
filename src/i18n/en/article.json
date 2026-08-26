@@ -1,0 +1,5 @@
+{
+  "slug_conflict": "Could not generate article slug, please try again",
+  "not_found": "Article not found",
+  "forbidden": "You are not the author of this article"
+}

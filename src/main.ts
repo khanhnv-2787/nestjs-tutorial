@@ -27,6 +27,10 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       // Biến plain object thành INSTANCE THẬT của DTO class + ép kiểu param/query.
       transform: true,
+      // Mỗi field chỉ báo MỘT lỗi — lỗi đầu tiên theo thứ tự decorator.
+      // Không có nó, field bị thiếu sẽ hiện cả "phải là chuỗi" lẫn
+      // "không được vượt quá 255 ký tự", và cái vô nghĩa có thể lên trước.
+      stopAtFirstError: true,
     }),
   );
 
