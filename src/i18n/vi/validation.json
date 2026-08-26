@@ -6,5 +6,8 @@
   "MAX_LENGTH": "{property} không được vượt quá {constraints.0} ký tự",
   "IS_OBJECT": "{property} phải là một object",
   "IS_ARRAY": "{property} phải là một mảng",
-  "ARRAY_MAX_SIZE": "{property} không được quá {constraints.0} phần tử"
+  "ARRAY_MAX_SIZE": "{property} không được quá {constraints.0} phần tử",
+  "IS_INT": "{property} phải là số nguyên",
+  "MIN": "{property} phải lớn hơn hoặc bằng {constraints.0}",
+  "MAX": "{property} phải nhỏ hơn hoặc bằng {constraints.0}"
 }

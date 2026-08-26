@@ -6,5 +6,8 @@
   "MAX_LENGTH": "{property} must not exceed {constraints.0} characters",
   "IS_OBJECT": "{property} must be an object",
   "IS_ARRAY": "{property} must be an array",
-  "ARRAY_MAX_SIZE": "{property} must not have more than {constraints.0} items"
+  "ARRAY_MAX_SIZE": "{property} must not have more than {constraints.0} items",
+  "IS_INT": "{property} must be an integer",
+  "MIN": "{property} must not be less than {constraints.0}",
+  "MAX": "{property} must not be greater than {constraints.0}"
 }

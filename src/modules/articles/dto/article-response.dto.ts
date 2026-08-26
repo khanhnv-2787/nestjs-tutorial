@@ -78,3 +78,27 @@ export function toArticleResponse(
     },
   };
 }
+
+export class ArticlesResponseDto {
+  @ApiProperty({ type: [ArticleDto] })
+  articles: ArticleDto[];
+
+  @ApiProperty({
+    example: 42,
+    description:
+      'Tổng số bài KHỚP BỘ LỌC, không phải số bài trong trang này — client cần nó để dựng thanh phân trang.',
+  })
+  articlesCount: number;
+}
+
+export function toArticlesResponse(
+  items: { article: Article; meta: ArticleMeta }[],
+  articlesCount: number,
+): ArticlesResponseDto {
+  return {
+    articles: items.map(
+      ({ article, meta }) => toArticleResponse(article, meta).article,
+    ),
+    articlesCount,
+  };
+}

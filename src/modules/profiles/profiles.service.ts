@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UserFollow } from '../users/entities/user-follow.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -88,6 +88,27 @@ export class ProfilesService {
       followerId: viewer.id,
       followingId: target.id,
     });
+  }
+
+  /**
+   * Trong danh sách userIds, viewer đang follow những ai.
+   *
+   * Bản GỘP của isFollowing, dùng khi cần kiểm nhiều người cùng lúc (danh
+   * sách bài viết). Gọi isFollowing trong vòng lặp sẽ sinh N query — đây
+   * chính là N+1, chỉ khác là ở tầng nghiệp vụ chứ không phải tầng ORM.
+   */
+  async filterFollowedIds(
+    viewer: User | undefined,
+    userIds: number[],
+  ): Promise<Set<number>> {
+    if (!viewer || userIds.length === 0) return new Set();
+
+    const rows = await this.followRepository.find({
+      where: { followerId: viewer.id, followingId: In(userIds) },
+      select: { followingId: true },
+    });
+
+    return new Set(rows.map((row) => row.followingId));
   }
 
   private async getUserOrFail(username: string): Promise<User> {
