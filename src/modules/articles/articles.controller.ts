@@ -35,6 +35,7 @@ import {
 } from './dto/article-response.dto';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { ListArticlesQueryDto } from './dto/list-articles-query.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 
 @ApiTags('articles')
@@ -78,6 +79,30 @@ export class ArticlesController {
     @CurrentUser() viewer: User | undefined,
   ): Promise<ArticlesResponseDto> {
     const { items, articlesCount } = await this.articlesService.listArticles(
+      query,
+      viewer,
+    );
+    return toArticlesResponse(items, articlesCount);
+  }
+
+  // GET /api/articles/feed
+  //
+  // ⚠️ PHẢI khai TRƯỚC @Get(':slug'). Nest so khớp route theo THỨ TỰ đăng ký,
+  // nên nếu ':slug' đứng trước thì '/articles/feed' sẽ khớp vào đó với
+  // slug = "feed" -> trả 404 "không tìm thấy bài viết" thay vì chạy feed.
+  @ApiOperation({
+    summary: 'Bài viết của những người mình follow',
+    description: 'Bắt buộc đăng nhập. Chỉ nhận `limit`/`offset`.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Thiếu token hoặc token không hợp lệ',
+  })
+  @Get('feed')
+  async feed(
+    @Query() query: PaginationQueryDto,
+    @CurrentUser() viewer: User,
+  ): Promise<ArticlesResponseDto> {
+    const { items, articlesCount } = await this.articlesService.feedArticles(
       query,
       viewer,
     );

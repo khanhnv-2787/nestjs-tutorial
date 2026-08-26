@@ -14,6 +14,7 @@ import { User } from '../users/entities/user.entity';
 import type { ArticleMeta } from './dto/article-response.dto';
 import { CreateArticleBodyDto } from './dto/create-article.dto';
 import { ListArticlesQueryDto } from './dto/list-articles-query.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { UpdateArticleBodyDto } from './dto/update-article.dto';
 import { ArticleFavorite } from './entities/article-favorite.entity';
 import { Article } from './entities/article.entity';
@@ -96,21 +97,62 @@ export class ArticlesService {
     query: ListArticlesQueryDto,
     viewer?: User,
   ): Promise<ArticleListResult> {
-    const qb = this.articleRepository
-      .createQueryBuilder('article')
-      // leftJoinAndSelect: nạp author và tags TRONG CÙNG câu truy vấn.
-      // Không có nó thì mỗi bài sẽ tốn thêm query để lấy author/tags -> N+1.
-      .leftJoinAndSelect('article.author', 'author')
-      .leftJoinAndSelect('article.tags', 'tag')
-      .orderBy('article.createdAt', 'DESC')
-      // take/skip (không phải limit/offset): với quan hệ ToMany, TypeORM
-      // phải phân trang theo SỐ BÀI chứ không phải số dòng sau khi join —
-      // một bài 3 tag sinh ra 3 dòng. take/skip xử lý đúng việc đó.
-      .take(query.limit)
-      .skip(query.offset);
-
+    const qb = this.baseListQuery(query);
     this.applyFilters(qb, query);
+    return this.paginate(qb, viewer);
+  }
 
+  /**
+   * Feed: chỉ bài của những người mà viewer đang follow.
+   *
+   * Dùng lại toàn bộ bộ khung của listArticles, chỉ thay bộ lọc. Không nhận
+   * tag/author/favorited — đặc tả RealWorld chỉ cho phân trang.
+   */
+  async feedArticles(
+    query: PaginationQueryDto,
+    viewer: User,
+  ): Promise<ArticleListResult> {
+    const qb = this.baseListQuery(query);
+
+    // EXISTS thay vì lấy danh sách id follow rồi WHERE IN: không phải tải
+    // hàng nghìn id về Node chỉ để đưa ngược xuống DB, và DB dừng ngay khi
+    // tìm thấy dòng đầu tiên khớp.
+    qb.andWhere(
+      `EXISTS (
+        SELECT 1 FROM user_follows uf
+        WHERE uf.followingId = article.authorId AND uf.followerId = :viewerId
+      )`,
+      { viewerId: viewer.id },
+    );
+
+    return this.paginate(qb, viewer);
+  }
+
+  /** Phần khung dùng chung của mọi danh sách bài viết. */
+  private baseListQuery(
+    query: PaginationQueryDto,
+  ): SelectQueryBuilder<Article> {
+    return (
+      this.articleRepository
+        .createQueryBuilder('article')
+        // leftJoinAndSelect: nạp author và tags TRONG CÙNG câu truy vấn.
+        // Không có nó thì mỗi bài sẽ tốn thêm query để lấy author/tags -> N+1.
+        .leftJoinAndSelect('article.author', 'author')
+        .leftJoinAndSelect('article.tags', 'tag')
+        .orderBy('article.createdAt', 'DESC')
+        // take/skip (không phải limit/offset): với quan hệ ToMany, TypeORM
+        // phải phân trang theo SỐ BÀI chứ không phải số dòng sau khi join —
+        // một bài 3 tag sinh ra 3 dòng. take/skip xử lý đúng việc đó.
+        .take(query.limit)
+        .skip(query.offset)
+    );
+  }
+
+  /** Chạy query rồi gắn meta cho cả trang. */
+  private async paginate(
+    qb: SelectQueryBuilder<Article>,
+    viewer?: User,
+  ): Promise<ArticleListResult> {
     const [articles, articlesCount] = await qb.getManyAndCount();
     const metaMap = await this.buildMetaMany(articles, viewer);
 
@@ -368,6 +410,20 @@ export class ArticlesService {
     if (article.authorId !== user.id) {
       throw new ForbiddenException(this.i18n.t('article.forbidden'));
     }
+  }
+
+  /**
+   * Danh sách toàn bộ tag, sắp theo bảng chữ cái.
+   *
+   * Chỉ select cột `name` — không cần id, và cột name đã có UNIQUE INDEX nên
+   * MySQL đọc thẳng từ index, không phải chạm vào bảng.
+   */
+  async listTagNames(): Promise<string[]> {
+    const tags = await this.tagRepository.find({
+      select: { name: true },
+      order: { name: 'ASC' },
+    });
+    return tags.map((tag) => tag.name);
   }
 
   private async resolveTags(names: string[]): Promise<Tag[]> {
