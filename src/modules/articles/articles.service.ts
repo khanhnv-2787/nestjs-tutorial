@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
-import { In, Repository, type SelectQueryBuilder } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  Repository,
+  type SelectQueryBuilder,
+} from 'typeorm';
 import { isDuplicateKeyError } from '../../common/database/is-duplicate-key-error';
 import { ProfilesService } from '../profiles/profiles.service';
 import { User } from '../users/entities/user.entity';
@@ -44,6 +50,7 @@ export class ArticlesService {
     @InjectRepository(ArticleFavorite)
     private readonly favoriteRepository: Repository<ArticleFavorite>,
     private readonly profilesService: ProfilesService,
+    private readonly dataSource: DataSource,
     private readonly i18n: I18nService,
   ) {}
 
@@ -51,20 +58,26 @@ export class ArticlesService {
     author: User,
     data: CreateArticleBodyDto,
   ): Promise<ArticleWithMeta> {
-    const tags = await this.resolveTags(data.tagList ?? []);
-
-    const article = this.articleRepository.create({
-      slug: generateSlug(data.title),
-      title: data.title,
-      description: data.description,
-      body: data.body,
-      authorId: author.id,
-      author,
-      tags,
-    });
-
     try {
-      const saved = await this.articleRepository.save(article);
+      // Tạo bài là HAI thao tác ghi: insert tag mới, rồi insert bài + liên kết
+      // article_tags. Không bọc transaction thì save() hỏng sẽ để lại tag mồ
+      // côi — tag hiện trong GET /api/tags nhưng lọc theo nó ra 0 bài.
+      const saved = await this.dataSource.transaction(async (manager) => {
+        const tags = await this.resolveTags(data.tagList ?? [], manager);
+
+        const article = manager.getRepository(Article).create({
+          slug: generateSlug(data.title),
+          title: data.title,
+          description: data.description,
+          body: data.body,
+          authorId: author.id,
+          author,
+          tags,
+        });
+
+        return manager.getRepository(Article).save(article);
+      });
+
       this.logger.log(`Đã tạo article id=${saved.id} slug=${saved.slug}`);
 
       // Bài vừa tạo: chưa ai thích, và tác giả không tự follow mình.
@@ -289,15 +302,19 @@ export class ArticlesService {
     }
     if (data.description !== undefined) article.description = data.description;
     if (data.body !== undefined) article.body = data.body;
-    // tagList gửi lên là THAY THẾ toàn bộ, không phải thêm vào.
-    // Gán mảng mới rồi save() -> TypeORM tự đồng bộ bảng article_tags:
-    // xoá liên kết cũ, thêm liên kết mới.
-    if (data.tagList !== undefined) {
-      article.tags = await this.resolveTags(data.tagList);
-    }
 
     try {
-      const saved = await this.articleRepository.save(article);
+      // Cùng lý do như createArticle: resolveTags + save là hai thao tác ghi.
+      const saved = await this.dataSource.transaction(async (manager) => {
+        // tagList gửi lên là THAY THẾ toàn bộ, không phải thêm vào.
+        // Gán mảng mới rồi save() -> TypeORM tự đồng bộ bảng article_tags:
+        // xoá liên kết cũ, thêm liên kết mới.
+        if (data.tagList !== undefined) {
+          article.tags = await this.resolveTags(data.tagList, manager);
+        }
+        return manager.getRepository(Article).save(article);
+      });
+
       this.logger.log(`Đã cập nhật article id=${saved.id} slug=${saved.slug}`);
       return { article: saved, ...(await this.buildMeta(saved, viewer)) };
     } catch (error) {
@@ -419,14 +436,32 @@ export class ArticlesService {
    * MySQL đọc thẳng từ index, không phải chạm vào bảng.
    */
   async listTagNames(): Promise<string[]> {
-    const tags = await this.tagRepository.find({
-      select: { name: true },
-      order: { name: 'ASC' },
-    });
-    return tags.map((tag) => tag.name);
+    // innerJoin -> chỉ trả tag ĐANG được ít nhất một bài dùng.
+    //
+    // Tag mồ côi phát sinh cả khi XOÁ bài: article_tags bị dọn theo CASCADE
+    // nhưng bản ghi trong tags thì ở lại (cố ý — tag là dữ liệu dùng chung,
+    // bài khác có thể đang dùng). Nếu liệt kê hết thì FE sẽ dựng bộ lọc có
+    // những tag bấm vào ra danh sách rỗng.
+    const rows = await this.tagRepository
+      .createQueryBuilder('tag')
+      .innerJoin('article_tags', 'article_tag', 'article_tag.tagId = tag.id')
+      .select('tag.name', 'name')
+      .distinct(true)
+      .orderBy('tag.name', 'ASC')
+      .getRawMany<{ name: string }>();
+
+    return rows.map((row) => row.name);
   }
 
-  private async resolveTags(names: string[]): Promise<Tag[]> {
+  private async resolveTags(
+    names: string[],
+    manager?: EntityManager,
+  ): Promise<Tag[]> {
+    // Nhận EntityManager để thao tác này nằm CHUNG transaction với lời gọi
+    // bên ngoài. Không truyền thì dùng repository mặc định.
+    const repository = manager
+      ? manager.getRepository(Tag)
+      : this.tagRepository;
     const unique = [
       ...new Set(
         names.map((name) => name.trim().toLowerCase()).filter(Boolean),
@@ -434,7 +469,7 @@ export class ArticlesService {
     ];
     if (unique.length === 0) return [];
 
-    await this.tagRepository
+    await repository
       .createQueryBuilder()
       .insert()
       .into(Tag)
@@ -442,6 +477,6 @@ export class ArticlesService {
       .orIgnore()
       .execute();
 
-    return this.tagRepository.findBy({ name: In(unique) });
+    return repository.findBy({ name: In(unique) });
   }
 }
