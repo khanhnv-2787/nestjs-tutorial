@@ -20,19 +20,19 @@ import { CreateUserBodyDto } from './create-user.dto';
  */
 export class UpdateUserBodyDto extends PartialType(CreateUserBodyDto) {
   @IsOptional()
-  @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
   @MaxLength(1000, { message: i18nValidationMessage('validation.MAX_LENGTH') })
+  @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
   bio?: string;
 
   @IsOptional()
-  @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
   @MaxLength(255, { message: i18nValidationMessage('validation.MAX_LENGTH') })
+  @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
   image?: string;
 }
 
 export class UpdateUserDto {
-  @IsObject({ message: i18nValidationMessage('validation.IS_OBJECT') })
   @ValidateNested()
   @Type(() => UpdateUserBodyDto)
+  @IsObject({ message: i18nValidationMessage('validation.IS_OBJECT') })
   user: UpdateUserBodyDto;
 }
