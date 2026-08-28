@@ -10,11 +10,11 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 | 1 | Init project + hello world + i18n + swagger | ✅ xong (gộp vào PR #2) |
 | 2 | Migration thủ công + Authentication | ✅ xong (PR #2, #3) |
 | 3 | Các API còn lại của User + upload avatar | ✅ xong (PR #4) |
-| 4 | CRUD Articles | 🔜 **tiếp theo** |
-| 5 | CRD Comments | ⬜ |
+| 4 | CRUD Articles | ✅ xong (PR #5) |
+| 5 | CRD Comments | 🔜 **tiếp theo** (chưa mở PR) |
 | 6 | E2E testing | ⬜ |
 
-Đã merge: PR #1, #2, #3, #4. Không có PR nào đang mở.
+Đã merge: PR #1, #2, #3, #4, #5. PR 5 (Comments) đã code xong, chưa mở PR.
 
 ---
 
@@ -137,12 +137,14 @@ Nguyên tắc: mỗi PR là một mốc chạy được và test được, khôn
 
 ---
 
-## PR 5 — CRD Comments ⬜
+## PR 5 — CRD Comments ✅ code xong, chưa mở PR
 
-- [ ] **Add Comment** — `POST /api/articles/:slug/comments`
-- [ ] **Get Comments** — `GET /api/articles/:slug/comments`
-- [ ] **Delete Comment** — `DELETE /api/articles/:slug/comments/:id`, chỉ tác giả
-- [ ] Cascade delete khi article bị xoá
+- [x] **Add Comment** — `POST /api/articles/:slug/comments`
+- [x] **Get Comments** — `GET /api/articles/:slug/comments` (optional auth, `following` phản ánh viewer thật)
+- [x] **Delete Comment** — `DELETE /api/articles/:slug/comments/:id`, chỉ tác giả **bình luận** (không phải tác giả bài)
+- [x] Cascade delete khi article bị xoá (đã kiểm tra: xoá bài -> bảng `comments` tự dọn theo `ON DELETE CASCADE`)
+- [x] Entity `Comment`, migration `CreateCommentsTable`
+- [x] Tránh N+1 khi tính `following` cho danh sách bình luận (dùng lại `ProfilesService.filterFollowedIds`, 1 query cho cả trang)
 
 ---
 

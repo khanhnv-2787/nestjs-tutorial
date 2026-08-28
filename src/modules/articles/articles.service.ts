@@ -401,6 +401,23 @@ export class ArticlesService {
     return { favorited, favoritesCount, following };
   }
 
+  /**
+   * Dùng bởi module khác (comments) để xác nhận bài viết tồn tại.
+   *
+   * Chỉ select `id` — comment không cần author/tags của bài viết, nạp thêm
+   * chỉ tốn query vô ích.
+   */
+  async getArticleIdBySlug(slug: string): Promise<number> {
+    const article = await this.articleRepository.findOne({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!article) {
+      throw new NotFoundException(this.i18n.t('article.not_found'));
+    }
+    return article.id;
+  }
+
   private async getBySlugOrFail(slug: string): Promise<Article> {
     const article = await this.articleRepository.findOne({
       where: { slug },
